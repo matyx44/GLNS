@@ -14,6 +14,9 @@
 #include "canvas.h"
 #include "parser.h"
 
+#include "utils.hpp"
+#include "MapDrawer.hpp"
+
 using namespace glns;
 
 Planner::Planner() = default;
@@ -28,7 +31,69 @@ void Planner::entryPoint(glns::Canvas *caller, int argc, char *argv[]) {
     // reOptDemo(caller);
     // moveOptDemo(caller);
 
-    std::string filename = argv[1];
+    //TODO added code, generate new file
+    int dimension = 0;
+    //generate polygons
+    pmap::geom::FPolygons polygons;
+    int numOfPolygons = rand() % 20 + 5;
+    for (int i = 0; i < numOfPolygons; ++i) {
+        int numOfVertices = rand() % 10 + 3;
+        int centerX = rand() % 900 + 50;
+        int centerY = rand() % 900 + 50;
+        pmap::geom::FPoint center(centerX,centerY);
+        pmap::geom::FPolygon polygon = pmap::getRegularPolygon(center,50, numOfVertices);
+        for (auto & point : polygon) {
+            point.x = (int) point.x;
+            point.y = (int) point.y;
+        }
+        dimension += polygon.size();
+        polygons.push_back(polygon);
+    }
+    //write polygons into polygons file
+    std::ofstream file;
+    file.open ("GeneratedFiles/dataPolygons.txt");
+    file << "[SCALE]\n1\n\n[BORDER]\n0 0\n1000 0\n1000 1000\n0 1000\n\n";
+    for (const pmap::geom::FPolygon& p : polygons) {
+        file << "[OBSTACLE]\n";
+        for (auto & i : p) {
+            file << i.x << " " << i.y << "\n";
+        }
+        file << "\n";
+    }
+    file.close();
+
+    //write polygons into TSP file
+    file.open ("GeneratedFiles/dataTSP.txt");
+    file << "Name : RNG Data\n";
+    file << "TYPE : TSP\n";
+    file << "DIMENSION : " << dimension << "\n";
+    file << "GTSP_SETS : " << numOfPolygons << "\n";
+    file << "EDGE_WEIGHT_TYPE : EUC_2D\n";
+    file << "NODE_COORD_SECTION\n";
+    int pointCounter = 1;
+    for (auto & polygon : polygons) {
+        for (auto & point : polygon) {
+            file << pointCounter++ << " " << point.x << " " << point.y << "\n";
+        }
+    }
+    pointCounter = 1;
+    int setCounter = 1;
+    file << "GTSP_SET_SECTION\n";
+    for (auto & polygon : polygons) {
+        file << setCounter++ << " ";
+        for (auto & point : polygon) {
+            file << pointCounter++ << " ";
+        }
+        file << -1 << "\n";
+    }
+
+    file.close();
+    //TODO end of added code
+
+    //TODO modified row
+    //std::string filename = argv[1];
+    std::string filename = "GeneratedFiles/dataTSP.txt";
+    //TODO end of modified row
     std::string output;
     bool outFlag = false;
     std::string mode = "fast";
@@ -57,6 +122,29 @@ void Planner::entryPoint(glns::Canvas *caller, int argc, char *argv[]) {
     auto timeStart = std::chrono::high_resolution_clock::now();
 
     Tour tour = solver(caller, mode, maxTime, tourBudget);
+
+
+
+    //TODO added code
+    pmap::geom::FMap map;
+    pmap::loadMap("GeneratedFiles/dataPolygons.txt", map);
+
+    pmap::draw::MapDrawer md(map);
+
+    md.openPDF("GeneratedFiles/pic.pdf");
+    md.drawMap();
+    //for (Vertex v : tour.vertices) {
+    //    pmap::geom::FPoint p1(v.x+50, v.y+50);
+    //    md.drawPoint(p1, PMAP_DRAW_COL_BLACK, 250, 1);
+    //}
+    for (Edge e : tour.edges) {
+        pmap::geom::FPoint p1(e.from.x+50, e.from.y+50);
+        pmap::geom::FPoint p2(e.to.x+50, e.to.y+50);
+        md.drawLine(p1, p2, 10, PMAP_DRAW_COL_GREEN, 1.0);
+    }
+    md.closePDF();
+    //TODO end of added code
+
 
     auto t_now = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration<double, std::milli>(t_now - timeStart).count();
