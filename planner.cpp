@@ -16,10 +16,53 @@
 
 #include "utils.hpp"
 #include "MapDrawer.hpp"
+#include "poly_maps.hpp"
+#include "triangulation.hpp"
+#include "simple_intersection.h"
 
 using namespace glns;
 
 Planner::Planner() = default;
+
+void printMap(pmap::geom::FMap map){
+    int index = 0;
+    std::cout << "Polygons: " << map.size() << "\n";
+    for(auto &poly : map){
+        std::cout << "Polygon: " << index++ << "\n";
+        for(auto &point : poly){
+            std::cout << "Point: " << point.x << " " << point.y << "\n";
+        }
+    }
+}
+
+void writeDataTSPIntoFile(std::string path, int totalPoints, int totalSets, std::vector<pmap::geom::FPoints> &pointsOfPolygons){
+    std::ofstream file;
+    file.open (path);
+    file << "Name : RNG Data\n";
+    file << "TYPE : TSP\n";
+    file << "DIMENSION : " << totalPoints << "\n";
+    file << "GTSP_SETS : " << totalSets << "\n";
+    file << "EDGE_WEIGHT_TYPE : EUC_2D\n";
+    file << "NODE_COORD_SECTION\n";
+    int pointCounter = 1;
+    for (int l = 0; l < pointsOfPolygons.size(); ++l) {
+        for(auto &point : pointsOfPolygons[l]){
+            file << pointCounter++ << " " << point.x << " " << point.y << "\n";
+        }
+    }
+    pointCounter = 1;
+    int setCounter = 1;
+    file << "GTSP_SET_SECTION\n";
+    for (int j = 0; j < pointsOfPolygons.size(); ++j) {
+        file << setCounter++ << " ";
+        for (int i = 0; i < pointsOfPolygons[j].size(); ++i) {
+            file << pointCounter++ << " ";
+        }
+        file << -1 << "\n";
+    }
+
+    file.close();
+}
 
 void Planner::entryPoint(glns::Canvas *caller, int argc, char *argv[]) {
     // animationDemo(caller);
@@ -32,68 +75,45 @@ void Planner::entryPoint(glns::Canvas *caller, int argc, char *argv[]) {
     // moveOptDemo(caller);
 
     //TODO added code, generate new file
-    int dimension = 0;
-    //generate polygons
-    pmap::geom::FPolygons polygons;
-    int numOfPolygons = rand() % 20 + 5;
-    for (int i = 0; i < numOfPolygons; ++i) {
-        int numOfVertices = rand() % 10 + 3;
-        int centerX = rand() % 900 + 50;
-        int centerY = rand() % 900 + 50;
-        pmap::geom::FPoint center(centerX,centerY);
-        pmap::geom::FPolygon polygon = pmap::getRegularPolygon(center,50, numOfVertices);
-        for (auto & point : polygon) {
-            point.x = (int) point.x;
-            point.y = (int) point.y;
-        }
-        dimension += polygon.size();
-        polygons.push_back(polygon);
-    }
-    //write polygons into polygons file
     std::ofstream file;
-    file.open ("GeneratedFiles/dataPolygons.txt");
-    file << "[SCALE]\n1\n\n[BORDER]\n0 0\n1000 0\n1000 1000\n0 1000\n\n";
-    for (const pmap::geom::FPolygon& p : polygons) {
-        file << "[OBSTACLE]\n";
-        for (auto & i : p) {
-            file << i.x << " " << i.y << "\n";
-        }
-        file << "\n";
-    }
-    file.close();
+    pmap::geom::FMap map;
+    pmap::loadMap("GeneratedFiles/dataPolygons.txt", map);
 
-    //write polygons into TSP file
-    file.open ("GeneratedFiles/dataTSP.txt");
-    file << "Name : RNG Data\n";
-    file << "TYPE : TSP\n";
-    file << "DIMENSION : " << dimension << "\n";
-    file << "GTSP_SETS : " << numOfPolygons << "\n";
-    file << "EDGE_WEIGHT_TYPE : EUC_2D\n";
-    file << "NODE_COORD_SECTION\n";
-    int pointCounter = 1;
-    for (auto & polygon : polygons) {
-        for (auto & point : polygon) {
-            file << pointCounter++ << " " << point.x << " " << point.y << "\n";
-        }
-    }
-    pointCounter = 1;
-    int setCounter = 1;
-    file << "GTSP_SET_SECTION\n";
-    for (auto & polygon : polygons) {
-        file << setCounter++ << " ";
-        for (auto & point : polygon) {
-            file << pointCounter++ << " ";
-        }
-        file << -1 << "\n";
-    }
+    //printMap(map);
 
-    file.close();
+    std::vector<pmap::geom::FPoints> pointsCenter;
+    std::vector<pmap::geom::FPolygons> triangles;
+    std::vector<pmap::geom::FPolygon> polygons;
+    int totalNumOfPoints = 0;
+
+    for (int i = 1; i < map.size(); ++i) {
+        pmap::geom::FPolygon pol;
+        for (int k = map[i].size() - 1; k >= 0; --k) {
+            pol.emplace_back(map[i][k]);
+        }
+
+        polygons.emplace_back(pol);
+
+        pmap::geom::FPoints tmpPointsCenter;
+        pmap::geom::FPolygons tmpTriangles;
+        pmap::triangulation::generateTriangularMeshFromPolygon(pol, 4.0, tmpPointsCenter, tmpTriangles);
+        totalNumOfPoints+=tmpPointsCenter.size();
+        triangles.emplace_back(tmpTriangles);
+        pointsCenter.emplace_back(tmpPointsCenter);
+    }
     //TODO end of added code
+
 
     //TODO modified row
     //std::string filename = argv[1];
     std::string filename = "GeneratedFiles/dataTSP.txt";
+    writeDataTSPIntoFile(filename, totalNumOfPoints, polygons.size(), pointsCenter);
     //TODO end of modified row
+
+
+
+
+
     std::string output;
     bool outFlag = false;
     std::string mode = "fast";
@@ -123,26 +143,100 @@ void Planner::entryPoint(glns::Canvas *caller, int argc, char *argv[]) {
 
     Tour tour = solver(caller, mode, maxTime, tourBudget);
 
-
-
     //TODO added code
-    pmap::geom::FMap map;
-    pmap::loadMap("GeneratedFiles/dataPolygons.txt", map);
-
     pmap::draw::MapDrawer md(map);
 
     md.openPDF("GeneratedFiles/pic.pdf");
     md.drawMap();
-    //for (Vertex v : tour.vertices) {
-    //    pmap::geom::FPoint p1(v.x+50, v.y+50);
-    //    md.drawPoint(p1, PMAP_DRAW_COL_BLACK, 250, 1);
-    //}
+
+    for (auto &tmpTriangles : triangles) {
+        md.drawPolygons(tmpTriangles, 1.0, PMAP_DRAW_COL_RED);
+    }
+
+    for (auto &tmpPoints : pointsCenter) {
+        md.drawPoints(tmpPoints, PMAP_DRAW_COL_BLUE, 15.0);
+    }
+
     for (Edge e : tour.edges) {
-        pmap::geom::FPoint p1(e.from.x+50, e.from.y+50);
-        pmap::geom::FPoint p2(e.to.x+50, e.to.y+50);
-        md.drawLine(p1, p2, 10, PMAP_DRAW_COL_GREEN, 1.0);
+        pmap::geom::FPoint p1(e.from.x, e.from.y);
+        pmap::geom::FPoint p2(e.to.x, e.to.y);
+        md.drawPoint(p1, PMAP_DRAW_COL_YELLOW, 10, 1);
+        md.drawPoint(p2, PMAP_DRAW_COL_YELLOW, 10, 1);
+        md.drawLine(p1, p2, 5, PMAP_DRAW_COL_GREEN, 1.0);
     }
     md.closePDF();
+    std::cout << "the end";
+
+    //TODO end of added code
+
+    //TODO added code
+
+
+
+    std::vector<pmap::geom::FPoints> pointsCenter1;
+    std::vector<pmap::geom::FPolygons> triangles1;
+    std::vector<pmap::geom::FPolygon> polygons1;
+    int totalNumOfPoints1 = 0;
+
+    for(auto &vertex : tour.vertices){
+        int indexPolygon = vertex.setId;
+        int indexTriangle = vertex.id;
+        for (int i = 0; i < indexPolygon; ++i) {
+            indexTriangle -= sets.at(i).vertices.size();
+        }
+        indexTriangle--;
+
+        pmap::geom::FPolygon pol = triangles.at(indexPolygon).at(indexTriangle);
+        polygons1.emplace_back(pol);
+        pmap::geom::FPoints tmpPointsCenter;
+        pmap::geom::FPolygons tmpTriangles;
+        pmap::triangulation::generateTriangularMeshFromPolygon(pol, 1.0f, tmpPointsCenter, tmpTriangles);
+        totalNumOfPoints1 += tmpPointsCenter.size();
+        triangles1.emplace_back(tmpTriangles);
+        pointsCenter1.emplace_back(tmpPointsCenter);
+    }
+
+
+
+    std::string filename1 = "GeneratedFiles/dataTSP1.txt";
+    writeDataTSPIntoFile(filename1, totalNumOfPoints1, polygons1.size(), pointsCenter1);
+
+    ///plan the tour
+    vertices.clear();
+    edges.clear();
+    sets.clear();
+    edgeMatrix.clear();
+    Parser parser1;
+    parser1.parse2dGtspInstance(filename1, vertices, edges, sets, edgeMatrix);
+    caller->setSets(sets);
+    caller->notify();
+    Tour tour1 = solver(caller, mode, maxTime, tourBudget);
+
+    ///draw the pic
+    md.openPDF("GeneratedFiles/pic1.pdf");
+    md.drawMap();
+
+    for (auto &tmpTriangles : triangles1) {
+        md.drawPolygons(tmpTriangles, 1.0, PMAP_DRAW_COL_RED);
+    }
+
+    for (auto &tmpPoints : pointsCenter1) {
+        md.drawPoints(tmpPoints, PMAP_DRAW_COL_BLUE, 15.0);
+    }
+
+    for (Edge e : tour1.edges) {
+        pmap::geom::FPoint p1(e.from.x, e.from.y);
+        pmap::geom::FPoint p2(e.to.x, e.to.y);
+        md.drawPoint(p1, PMAP_DRAW_COL_YELLOW, 10, 1);
+        md.drawPoint(p2, PMAP_DRAW_COL_YELLOW, 10, 1);
+        md.drawLine(p1, p2, 5, PMAP_DRAW_COL_GREEN, 1.0);
+    }
+    md.closePDF();
+    std::cout << "the end";
+
+
+
+
     //TODO end of added code
 
 

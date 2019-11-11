@@ -27,17 +27,17 @@ namespace pmap {
 
     ClipperLib::Path getRegularClipPolygon(pmap::geom::FPoint center, double radius, unsigned int N);
 
-    ClipperLib::IntPoint toClipper(pmap::geom::FPoint &fPoint);
+    ClipperLib::IntPoint toClipper(const pmap::geom::FPoint &fPoint);
 
-    ClipperLib::Path toClipper(pmap::geom::FPolygon &fPolygon);
+    ClipperLib::Path toClipper(const pmap::geom::FPolygon &fPolygon);
 
-    ClipperLib::Paths toClipper(pmap::geom::FMap &fMap);
+    ClipperLib::Paths toClipper(const pmap::geom::FMap &fMap);
 
-    pmap::geom::FPoint fromClipper(ClipperLib::IntPoint &cp);
+    pmap::geom::FPoint fromClipper(const ClipperLib::IntPoint &cp);
 
-    pmap::geom::FPolygon fromClipper(ClipperLib::Path &p);
+    pmap::geom::FPolygon fromClipper(const ClipperLib::Path &p);
 
-    pmap::geom::FMap fromClipper(ClipperLib::Paths &ps);
+    pmap::geom::FMap fromClipper(const ClipperLib::Paths &ps);
 
     void clip(ClipperLib::ClipType ct, ClipperLib::Path &subj, ClipperLib::Path &clip, ClipperLib::Paths &solution);
 

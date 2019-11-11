@@ -13,5 +13,6 @@
 #include "geom.hpp"
 #include "utils.hpp"
 #include "MapDrawer.hpp"
+#include "triangulation.hpp"
 
 #endif //POLY_MAPS_POLY_MAPS_HPP

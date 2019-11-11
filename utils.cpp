@@ -39,11 +39,11 @@ ClipperLib::Path pmap::getRegularClipPolygon(FPoint center, double radius, unsig
     return ret;
 }
 
-ClipperLib::IntPoint pmap::toClipper(FPoint &fPoint) {
+ClipperLib::IntPoint pmap::toClipper(const FPoint &fPoint) {
     return {(ClipperLib::cInt) (fPoint.x * F_TO_CLIP), (ClipperLib::cInt) (fPoint.y * F_TO_CLIP)};
 }
 
-ClipperLib::Path pmap::toClipper(FPolygon &fPolygon) {
+ClipperLib::Path pmap::toClipper(const FPolygon &fPolygon) {
     ClipperLib::Path r = {};
     for (auto &fPoint : fPolygon)
         r.push_back(pmap::toClipper(fPoint));
@@ -51,25 +51,25 @@ ClipperLib::Path pmap::toClipper(FPolygon &fPolygon) {
 }
 
 
-ClipperLib::Paths pmap::toClipper(FMap &fMap) {
+ClipperLib::Paths pmap::toClipper(const FMap &fMap) {
     ClipperLib::Paths r = {};
     for (auto &fPolygon : fMap)
         r.push_back(pmap::toClipper(fPolygon));
     return r;
 }
 
-FPoint pmap::fromClipper(ClipperLib::IntPoint &cp) {
+FPoint pmap::fromClipper(const ClipperLib::IntPoint &cp) {
     return {((geom_float) cp.X) / F_TO_CLIP, ((geom_float) cp.Y) / F_TO_CLIP};
 }
 
-FPolygon pmap::fromClipper(ClipperLib::Path &path) {
+FPolygon pmap::fromClipper(const ClipperLib::Path &path) {
     FPolygon r = {};
     for (auto &point : path)
         r.push_back({((geom_float) point.X) / F_TO_CLIP, ((geom_float) point.Y) / F_TO_CLIP});
     return r;
 }
 
-FMap pmap::fromClipper(ClipperLib::Paths &paths) {
+FMap pmap::fromClipper(const ClipperLib::Paths &paths) {
     FMap r = {};
     for (auto path : paths)
         r.push_back(pmap::fromClipper(path));

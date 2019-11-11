@@ -77,7 +77,8 @@ void Parser::parse2dGtspInstance(std::string filename, std::vector<Vertex> &vert
 
     std::vector<std::string> lines = getLines(std::move(filename));
     std::vector<std::string> words;
-    int x, y, id;
+    double x,y;
+    int id;
     bool coordsReached = false;
     bool setsReached = false;
     bool eofReached = false;
@@ -98,12 +99,17 @@ void Parser::parse2dGtspInstance(std::string filename, std::vector<Vertex> &vert
         // loading vertices from coordinates data
         if (coordsReached && !setsReached && !eofReached && line.find("NODE_COORD_SECTION") == std::string::npos) {
             words = lineToWords(line, ' ');
-            y = std::stoi(words.back());
+            std::stringstream ss1(words.back());
+            ss1 >> y;
+            //y = std::stod(words.back());
             words.pop_back();
-            x = std::stoi(words.back());
+            std::stringstream ss2(words.back());
+            ss2 >> x;
+            //x = std::stod(words.back());
             words.pop_back();
             id = std::stoi(words.back());;
             Vertex vertex(x, y, id);
+            std::cout << "x: "<< x << " y: " << y;
             vertices.push_back(vertex);
         }
 

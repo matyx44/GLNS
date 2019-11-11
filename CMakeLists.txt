@@ -7,6 +7,14 @@ set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/lib/x86_64-linux-gnu/pkgcon
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -O3")
 
+## Boost.
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost 1.52 COMPONENTS program_options system filesystem)
+
+
+
 
 include_directories("/usr/include/cairomm-1.0")
 
@@ -18,10 +26,14 @@ include_directories(
         ${GTKMM_INCLUDE_DIRS}
 )
 
+
 find_package(PkgConfig)
 pkg_check_modules(GTKMM gtkmm-3.0)
 
-add_executable(GLNS main.cpp point.cpp point.h arc.cpp arc.h parser.h parser.cpp canvas.cpp canvas.h vertex.h edge.h vertex.cpp set.h set.cpp tour.h edge.cpp planner.cpp planner.h heuristic.h heuristic.cpp clipper.hpp clipper.cpp MapDrawer.cpp MapDrawer.hpp utils.cpp utils.hpp geom.cpp geom.hpp poly_maps.hpp)
+add_executable(GLNS main.cpp point.cpp point.h arc.cpp arc.h parser.h parser.cpp canvas.cpp canvas.h vertex.h edge.h vertex.cpp set.h set.cpp tour.h edge.cpp planner.cpp planner.h heuristic.h heuristic.cpp clipper.hpp clipper.cpp MapDrawer.cpp MapDrawer.hpp utils.cpp utils.hpp geom.cpp geom.hpp poly_maps.hpp simple_intersection.h triangle.c triangle.h triangulation.hpp triangulation.cpp)
+
+target_compile_definitions(GLNS
+        PRIVATE -DTRILIBRARY -DANSI_DECLARATORS -DNO_TIMER)
 
 target_link_libraries(GLNS
         ${GTKMM_LIBRARIES}

@@ -17,13 +17,13 @@ namespace glns {
     class Vertex {
 public:
     Vertex() = default;;
-    Vertex(int x, int y, int id): x(x), y(y), id(id) {};
+    Vertex(double x, double y, int id): x(x), y(y), id(id) {};
     double getDistanceFrom(Vertex v2);
     void draw(const Cairo::RefPtr<Cairo::Context>& cr, int size);
 
     int id; // vertices are indexed according to id given in input data
     int setId; // id of set containing this vertex and also index of its position in vector Planner.sets
-    int x, y;
+    double x, y;
     double removalCost;
     double BFSWeight;
     int BFSPrevId;
